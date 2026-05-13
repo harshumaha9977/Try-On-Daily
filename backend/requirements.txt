@@ -16,5 +16,6 @@ aiomysql
 asyncpg
 greenlet
 gradio-client
+replicate
 python-jose[cryptography]
 passlib[bcrypt]
