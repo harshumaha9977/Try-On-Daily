@@ -2,7 +2,6 @@ print("DEBUG: Application starting...")
 import os
 import asyncio
 import sys
-print("DEBUG: Importing basic libraries...")
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,19 +18,9 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
-
-print("DEBUG: Importing CV2 and MediaPipe...")
-import cv2
-import mediapipe as mp
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
-
-print("DEBUG: Importing RemBG and AI tools...")
-from rembg import remove, new_session
 from PIL import Image
 import numpy as np
 import math
-from gradio_client import Client, handle_file
 
 print("DEBUG: Importing local modules...")
 from auth import verify_password, get_password_hash, create_access_token, decode_token
@@ -39,7 +28,14 @@ from database import get_db, init_db, User, Job
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-print("DEBUG: Imports completed successfully.")
+print("DEBUG: Basic imports completed successfully.")
+
+# Health Check for Render
+app = FastAPI()
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
 
 # Load API keys from .env file
 import dotenv
@@ -47,8 +43,6 @@ dotenv.load_dotenv(override=True)
 print("DEBUG: REPLICATE_API_TOKEN is", os.getenv("REPLICATE_API_TOKEN"))
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_placeholder")
-
-app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
