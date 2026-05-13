@@ -42,8 +42,6 @@ import dotenv
 dotenv.load_dotenv(override=True)
 print("DEBUG: REPLICATE_API_TOKEN is", os.getenv("REPLICATE_API_TOKEN"))
 
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_placeholder")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -51,6 +49,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    import traceback
+    error_msg = f"GLOBAL ERROR: {str(exc)}\n{traceback.format_exc()}"
+    print(error_msg)
+    from fastapi.responses import JSONResponse
+    return JSONResponse(content={"error": str(exc), "traceback": traceback.format_exc()}, status_code=500)
+
 
 if not os.path.exists("outputs"):
     os.makedirs("outputs")
