@@ -1,35 +1,45 @@
+print("DEBUG: Application starting...")
+import os
+import asyncio
+import sys
+print("DEBUG: Importing basic libraries...")
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
-import uvicorn
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-import cv2
-from rembg import remove, new_session
-from PIL import Image
-import numpy as np
-import mediapipe as mp
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
-import math
 import io
-import os
 import base64
 import requests
 import stripe
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from datetime import datetime, timezone
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
+
+print("DEBUG: Importing CV2 and MediaPipe...")
+import cv2
+import mediapipe as mp
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
+
+print("DEBUG: Importing RemBG and AI tools...")
+from rembg import remove, new_session
+from PIL import Image
+import numpy as np
+import math
+from gradio_client import Client, handle_file
+
+print("DEBUG: Importing local modules...")
 from auth import verify_password, get_password_hash, create_access_token, decode_token
 from database import get_db, init_db, User, Job
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timezone
-from gradio_client import Client, handle_file
-import asyncio
-from fastapi.staticfiles import StaticFiles
+
+print("DEBUG: Imports completed successfully.")
 
 # Load API keys from .env file
 import dotenv
