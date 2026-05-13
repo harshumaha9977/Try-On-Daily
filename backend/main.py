@@ -176,17 +176,7 @@ async def get_me(current_user: dict = Depends(get_current_user), db: AsyncSessio
     }
 # =====================================================
 
-# ----------------- GLOBAL INITIALIZATIONS (Enterprise Optimization) -----------------
-# 1. Initialize MediaPipe Pose Landmarker
-base_options = python.BaseOptions(model_asset_path='pose_landmarker_lite.task')
-options = vision.PoseLandmarkerOptions(
-    base_options=base_options,
-    output_segmentation_masks=False)
-detector = vision.PoseLandmarker.create_from_options(options)
-
-# 2. Initialize global rembg session to avoid reloading model per request
-rembg_session = new_session()
-# ----------------------------------------------------------------------------------
+# -----------------------------------------------------
 
 def overlay_transparent(background, overlay, x, y, person_mask=None):
     """
