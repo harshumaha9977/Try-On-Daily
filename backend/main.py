@@ -84,7 +84,7 @@ app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
 job_queue = asyncio.Queue()
 
 # App Version for Update Feature
-CURRENT_APP_VERSION = "1.0.9"
+CURRENT_APP_VERSION = "1.1.0"
 
 @app.get("/version")
 async def get_version():
