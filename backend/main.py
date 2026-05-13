@@ -36,6 +36,7 @@ app = FastAPI()
 @app.get("/health")
 async def health_check():
     db_ok = False
+    db_error = None
     try:
         from sqlalchemy import text
         from database import engine
@@ -43,11 +44,13 @@ async def health_check():
             await conn.execute(text("SELECT 1"))
             db_ok = True
     except Exception as e:
-        print(f"Health DB Error: {e}")
+        db_error = str(e)
+        print(f"Health DB Error: {db_error}")
         
     return {
         "status": "ok",
         "database": "connected" if db_ok else "failed",
+        "db_error": db_error,
         "replicate": "configured" if os.getenv("REPLICATE_API_TOKEN") else "missing",
         "version": CURRENT_APP_VERSION
     }
