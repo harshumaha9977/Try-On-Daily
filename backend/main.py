@@ -35,7 +35,22 @@ app = FastAPI()
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok"}
+    db_ok = False
+    try:
+        from sqlalchemy import text
+        from database import engine
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+            db_ok = True
+    except Exception as e:
+        print(f"Health DB Error: {e}")
+        
+    return {
+        "status": "ok",
+        "database": "connected" if db_ok else "failed",
+        "replicate": "configured" if os.getenv("REPLICATE_API_TOKEN") else "missing",
+        "version": CURRENT_APP_VERSION
+    }
 
 # Load API keys from .env file
 import dotenv

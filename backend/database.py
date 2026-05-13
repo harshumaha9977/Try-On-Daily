@@ -17,7 +17,7 @@ MYSQL_DB = os.getenv("MYSQL_DB", "tryon_db")
 # Automatically detect if we are on Cloud (PostgreSQL) or Local (MySQL)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-if DATABASE_URL:
+if DATABASE_URL and isinstance(DATABASE_URL, str):
     # Render provides 'postgres://', but SQLAlchemy requires 'postgresql+asyncpg://'
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
@@ -25,6 +25,7 @@ if DATABASE_URL:
         DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
     print("📡 Connected to Cloud PostgreSQL Database")
 else:
+    print("⚠️ DATABASE_URL not found or invalid. Falling back to Local MySQL.")
     # Fallback to Local MySQL
     DATABASE_URL = f"mysql+aiomysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}"
     print("🏠 Connected to Local MySQL Database")
