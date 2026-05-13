@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Virtual Try-On</title>
+</head>
+
+<body style="font-family: Arial; text-align:center; margin-top:50px;">
+
+    <h1>Virtual Try-On</h1>
+
+    <input type="file" id="userImage"><br><br>
+    <input type="file" id="clothImage"><br><br>
+
+    <button onclick="upload()">Try On</button>
+
+    <br><br>
+    <img id="output" width="300"><br><br>
+
+    <h3 id="result"></h3>
+
+    <script>
+        async function upload() {
+
+            let userInput = document.getElementById("userImage");
+            let clothInput = document.getElementById("clothImage");
+
+            if (!userInput.files[0] || !clothInput.files[0]) {
+                alert("Select images");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("user_image", userInput.files[0]);
+            formData.append("cloth_image", clothInput.files[0]);
+
+            console.log("Sending request...");
+
+            try {
+                let res = await fetch("http://localhost:8000/tryon", {
+                    method: "POST",
+                    body: formData
+                });
+
+                console.log("Status:", res.status);
+
+                let blob = await res.blob();
+                let url = URL.createObjectURL(blob);
+
+                document.getElementById("output").src = url;
+                console.log("Image received");
+
+            } catch (e) {
+                console.error("ERROR:", e);
+                alert("Error check console");
+            }
+        }
+    </script>
+
+</body>
+
+</html>

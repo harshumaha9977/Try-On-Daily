@@ -1,0 +1,40 @@
+# General
+node_modules/
+**/node_modules/
+venv/
+**/venv/
+.env
+**/.env
+__pycache__/
+**/__pycache__/
+.DS_Store
+**/.DS_Store
+.idea/
+**/.idea/
+.gradle/
+**/.gradle/
+
+# Frontend
+dist/
+build/
+**/build/
+.next/
+android/build/
+android/.gradle/
+android/.idea/
+
+# Backend
+*.pyc
+*.log
+nohup.out
+debug_ai.log
+uvicorn.log
+
+# Large/Temporary files
+*.task
+*.apk
+temp_*
+backend/temp_*
+*.jpg
+*.png
+!frontend/src/assets/**/*
