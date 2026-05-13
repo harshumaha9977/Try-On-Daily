@@ -4,7 +4,7 @@ python-multipart
 pydantic
 email-validator
 opencv-python-headless
-rembg
+rembg[cpu]
 Pillow
 numpy
 mediapipe
