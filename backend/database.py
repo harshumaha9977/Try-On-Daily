@@ -30,7 +30,14 @@ else:
     DATABASE_URL = f"mysql+aiomysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}"
     print("🏠 Connected to Local MySQL Database")
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(
+    DATABASE_URL, 
+    echo=True,
+    connect_args={
+        "prepared_statement_cache_size": 0,
+        "statement_cache_size": 0
+    } if "postgresql" in DATABASE_URL else {}
+)
 
 AsyncSessionLocal = sessionmaker(
     bind=engine,

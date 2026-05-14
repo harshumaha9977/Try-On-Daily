@@ -69,7 +69,7 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-@app.get("/")
+@app.get("/", methods=["GET", "HEAD"])
 async def root():
     return {"message": "Try-ON API is running", "status": "ok"}
 
