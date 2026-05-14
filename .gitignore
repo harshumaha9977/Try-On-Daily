@@ -1,40 +1,60 @@
-# General
+# ===========================
+# Node / Frontend
+# ===========================
 node_modules/
 **/node_modules/
+dist/
+.next/
+
+# ===========================
+# Python / Backend
+# ===========================
 venv/
 **/venv/
-.env
-**/.env
 __pycache__/
 **/__pycache__/
-.DS_Store
-**/.DS_Store
-.idea/
-**/.idea/
-.gradle/
-**/.gradle/
-
-# Frontend
-dist/
-build/
-**/build/
-.next/
-android/build/
-android/.gradle/
-android/.idea/
-
-# Backend
 *.pyc
+*.pyo
 *.log
 nohup.out
 debug_ai.log
 uvicorn.log
 
-# Large/Temporary files
-*.task
+# ===========================
+# Environment / Secrets
+# ===========================
+.env
+**/.env
+
+# ===========================
+# Android Build Artifacts
+# ===========================
+android/build/
+android/.gradle/
+android/.idea/
+**/build/
+**/.gradle/
+**/.idea/
 *.apk
+
+# ===========================
+# OS Files
+# ===========================
+.DS_Store
+**/.DS_Store
+
+# ===========================
+# Temp & Media Files
+# ===========================
+*.task
 temp_*
 backend/temp_*
-*.jpg
-*.png
-!frontend/src/assets/**/*
+backend/outputs/
+backend/*.jpg
+backend/*.png
+backend/*.jpeg
+
+# ===========================
+# IDE
+# ===========================
+.vscode/

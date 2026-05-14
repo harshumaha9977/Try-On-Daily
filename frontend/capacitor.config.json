@@ -1,0 +1,23 @@
+{
+  "appId": "com.tryondaily.app",
+  "appName": "Try-ON daily",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "allowNavigation": ["*"],
+    "cleartext": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#faf9f6",
+      "showSpinner": false
+    },
+    "AdMob": {
+      "initializeOnId": "ca-app-pub-6927522133949566~6021001521"
+    }
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
