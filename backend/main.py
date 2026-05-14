@@ -108,8 +108,21 @@ async def download_apk():
 # Init database and background tasks on startup
 @app.on_event("startup")
 async def startup_event():
-    await init_db()
-    asyncio.create_task(process_jobs())
+    print("🚀 [STARTUP] Initializing Application...")
+    try:
+        # Don't let DB init block the whole app startup
+        asyncio.create_task(init_db())
+        print("✅ [STARTUP] DB initialization task started.")
+    except Exception as e:
+        print(f"❌ [STARTUP] DB init error: {e}")
+        
+    try:
+        asyncio.create_task(process_jobs())
+        print("✅ [STARTUP] Background worker task started.")
+    except Exception as e:
+        print(f"❌ [STARTUP] Worker task error: {e}")
+    
+    print("✨ [STARTUP] Application is ready to receive requests!")
 
 # ================== JWT AUTH MODELS ==================
 class RegisterRequest(BaseModel):
