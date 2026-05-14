@@ -66,7 +66,12 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+@app.get("/")
+async def root():
+    return {"message": "Try-ON API is running", "status": "ok"}
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
