@@ -70,6 +70,7 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+# Root route — must be fast for healthchecks
 @app.get("/")
 async def root():
     return {"message": "Try-ON API is running", "status": "ok"}
