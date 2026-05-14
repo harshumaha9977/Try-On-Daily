@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 from PIL import Image
 import numpy as np
 import math
+import cv2
 
 print("DEBUG: Importing local modules...")
 from auth import verify_password, get_password_hash, create_access_token, decode_token
@@ -49,7 +50,7 @@ async def health_check():
         
     return {
         "status": "ok",
-        "database": "connected" if db_ok else "failed",
+        "database": "connected" if db_ok else "connecting",
         "db_error": db_error,
         "replicate": "configured" if os.getenv("REPLICATE_API_TOKEN") else "missing",
         "version": CURRENT_APP_VERSION

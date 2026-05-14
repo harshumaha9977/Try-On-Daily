@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Studio from './pages/Studio';
 import TryOn from './pages/TryOn';
@@ -8,70 +7,80 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
-import AIChat from './components/AIChat';
-import { MessageSquare, AlertCircle } from 'lucide-react';
-import { useAuth } from './context/AuthContext';
-import { APP_VERSION } from './AppVersion';
-import { SplashScreen } from '@capacitor/splash-screen';
-
+import Landing from './pages/Landing';
 import Settings from './pages/Settings';
+import AIChat from './components/AIChat';
 import LoginModal from './components/LoginModal';
 import PricingModal from './components/PricingModal';
 import CheckoutModal from './components/CheckoutModal';
-import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import { useAuth } from './context/AuthContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { SplashScreen } from '@capacitor/splash-screen';
+import { Home as HomeIcon, Sparkles, Image, Settings as SettingsIcon, MessageSquare } from 'lucide-react';
 
+// Protected route — redirect to Landing if not logged in
 function ProtectedRoute({ children }) {
   const { isLoggedIn, setIsLoginModalOpen, loading } = useAuth();
-  
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div style={{ minHeight: '100vh', backgroundColor: '#0A0A0A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 32, height: 32, border: '3px solid #C8A96E', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       </div>
     );
   }
-
   if (!isLoggedIn) {
-    // Show login modal instead of silently redirecting
     setTimeout(() => setIsLoginModalOpen(true), 100);
     return <Navigate to="/" replace />;
   }
   return children;
 }
 
-// Bottom Navigation for Mobile (to match the premium app)
-import { Home as HomeIcon, Sparkles as SparklesIcon, Settings as SettingsIcon, Image as ImageIcon } from 'lucide-react';
+// Root redirect — if logged in go to /home, else show Landing
+function RootRoute() {
+  const { isLoggedIn, loading } = useAuth();
+  if (loading) return null;
+  if (isLoggedIn) return <Navigate to="/home" replace />;
+  return <Landing />;
+}
+
+// Bottom Navigation Bar
 function BottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useLanguage();
-  
+
   const navItems = [
-    { path: '/', icon: HomeIcon, label: t('home') },
-    { path: '/try-on', icon: SparklesIcon, label: t('edit') },
-    { path: '/studio', icon: ImageIcon, label: t('images') },
-    { path: '/settings', icon: SettingsIcon, label: t('settings') },
+    { path: '/home', icon: HomeIcon, label: 'Home' },
+    { path: '/try-on', icon: Sparkles, label: 'Try-On' },
+    { path: '/studio', icon: Image, label: 'Studio' },
+    { path: '/settings', icon: SettingsIcon, label: 'Settings' },
   ];
 
+  // Hide bottom nav on landing page
+  if (location.pathname === '/') return null;
+
   return (
-    <div 
-      className="md:hidden fixed bottom-0 left-0 right-0 glass border-t border-white/20 flex items-center justify-around px-2 z-40"
-      style={{
-        paddingTop: '0.8rem',
-        paddingBottom: 'max(env(safe-area-inset-bottom), 0.8rem)'
-      }}
-    >
+    <div className="bottom-nav">
       {navItems.map((item) => {
         const isActive = location.pathname === item.path;
         return (
           <button
             key={item.path}
+            id={`nav-${item.label.toLowerCase()}`}
             onClick={() => navigate(item.path)}
-            className={`flex flex-col items-center gap-1 transition-all ${isActive ? 'text-primary' : 'text-gray-400'}`}
+            className={`bottom-nav-item ${isActive ? 'active' : ''}`}
           >
-            <item.icon className={`w-6 h-6 ${isActive ? 'fill-primary/10' : ''}`} />
-            <span className="text-[10px] font-black uppercase tracking-tighter">{item.label}</span>
+            <item.icon
+              style={{
+                width: 22,
+                height: 22,
+                strokeWidth: isActive ? 2.5 : 1.8,
+              }}
+            />
+            <span>{item.label}</span>
+            {isActive && (
+              <div style={{ width: 4, height: 4, borderRadius: '50%', backgroundColor: '#C8A96E', marginTop: 1 }} />
+            )}
           </button>
         );
       })}
@@ -79,48 +88,30 @@ function BottomNav() {
   );
 }
 
-// Handle Android back button
+// Android back button handler
 function BackButtonHandler() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isLoggedIn } = useAuth();
 
   useEffect(() => {
-    let backButtonListener = null;
-
-    const setupBackButton = async () => {
+    let listener = null;
+    const setup = async () => {
       try {
         const { App } = await import('@capacitor/app');
-        backButtonListener = await App.addListener('backButton', ({ canGoBack }) => {
-          // If we are logged in and on a protected page (like Studio or Try-on), 
-          // and trying to go back to Home, ask for confirmation.
-          if (isLoggedIn && location.pathname !== '/' && !canGoBack) {
-            if (window.confirm("Do you want to exit the Studio and go back to Home?")) {
-              navigate('/');
-            }
-            return;
-          }
-
-          // Standard navigation
-          if (canGoBack && location.pathname !== '/') {
+        listener = await App.addListener('backButton', ({ canGoBack }) => {
+          if (location.pathname === '/' || location.pathname === '/home') {
+            App.minimizeApp();
+          } else if (canGoBack) {
             navigate(-1);
           } else {
-            // On home page — minimize app instead of exiting
-            App.minimizeApp();
+            navigate('/home');
           }
         });
-      } catch (e) {
-        // Not running in Capacitor, ignore
-      }
+      } catch (e) {}
     };
-
-    setupBackButton();
-
-    return () => {
-      if (backButtonListener) {
-        backButtonListener.remove();
-      }
-    };
+    setup();
+    return () => { if (listener) listener.remove(); };
   }, [navigate, location.pathname, isLoggedIn]);
 
   return null;
@@ -128,16 +119,11 @@ function BackButtonHandler() {
 
 function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const { isLoginModalOpen, setIsLoginModalOpen, isPricingModalOpen, setIsPricingModalOpen } = useAuth();
+  const { isLoginModalOpen, setIsLoginModalOpen, isPricingModalOpen, setIsPricingModalOpen, isLoggedIn } = useAuth();
 
   useEffect(() => {
-    // Hide splash screen
     const hideSplash = async () => {
-      try {
-        await SplashScreen.hide();
-      } catch (e) {
-        console.log("Not running in capacitor or splash screen not available");
-      }
+      try { await SplashScreen.hide(); } catch (e) {}
     };
     hideSplash();
   }, []);
@@ -146,63 +132,63 @@ function App() {
     <ThemeProvider>
       <LanguageProvider>
         <Router>
-        <BackButtonHandler />
-        <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
-          <Navbar />
-          
-          {/* Main Content Area */}
-          <main className="flex-1 flex flex-col w-full pb-16 md:pb-0">
+          <BackButtonHandler />
+          <div style={{ minHeight: '100vh', backgroundColor: '#0A0A0A', color: '#FFFFFF' }}>
             <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/studio" element={
-                <ProtectedRoute>
-                  <Studio />
-                </ProtectedRoute>
-              } />
-              <Route path="/try-on" element={<TryOn />} />
-              <Route path="/settings" element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              } />
+              {/* Root: Landing if not logged in, Home if logged in */}
+              <Route path="/" element={<RootRoute />} />
+
+              {/* Public */}
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
+              <Route path="/try-on" element={<TryOn />} />
+
+              {/* Protected */}
+              <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+              <Route path="/studio" element={<ProtectedRoute><Studio /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             </Routes>
-          </main>
 
-          {/* Bottom Nav for Mobile */}
-          <BottomNav />
+            {/* Bottom Nav (visible on all pages except landing) */}
+            <BottomNav />
 
-          {/* Global Floating Chat Button */}
-          <button 
-            onClick={() => setIsChatOpen(true)}
-            className="fixed bottom-24 right-6 w-14 h-14 bg-black rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-105 transition-transform z-40 border border-gray-800 md:bottom-6"
-          >
-            <MessageSquare className="w-6 h-6" />
-          </button>
+            {/* Floating Chat Button — only when logged in */}
+            {isLoggedIn && (
+              <button
+                id="chat-fab-button"
+                onClick={() => setIsChatOpen(true)}
+                style={{
+                  position: 'fixed',
+                  bottom: 80,
+                  right: 20,
+                  width: 52,
+                  height: 52,
+                  borderRadius: '50%',
+                  backgroundColor: '#1E1E1E',
+                  border: '1px solid #2A2A2A',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 40,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                }}
+              >
+                <MessageSquare style={{ width: 22, height: 22, color: '#C8A96E' }} />
+              </button>
+            )}
 
-          {/* Global AIChat Modal */}
-          <AIChat 
-            isOpen={isChatOpen} 
-            onClose={() => setIsChatOpen(false)} 
-          />
-
-          {/* Authentication & Payment Modals */}
-          <LoginModal 
-            isOpen={isLoginModalOpen} 
-            onClose={() => setIsLoginModalOpen(false)} 
-          />
-          <PricingModal 
-            isOpen={isPricingModalOpen} 
-            onClose={() => setIsPricingModalOpen(false)} 
-          />
-          <CheckoutModal />
-      </div>
-      </Router>
-    </LanguageProvider>
-  </ThemeProvider>
+            {/* Modals */}
+            <AIChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+            <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
+            <PricingModal isOpen={isPricingModalOpen} onClose={() => setIsPricingModalOpen(false)} />
+            <CheckoutModal />
+          </div>
+        </Router>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }
 

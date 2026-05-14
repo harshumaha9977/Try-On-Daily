@@ -3,29 +3,24 @@ import {
   Upload, 
   Camera, 
   Sparkles, 
-  ChevronLeft, 
-  Download, 
-  History,
-  Shirt,
-  Scissors,
-  Watch,
-  Grid,
-  Zap,
-  Glasses,
+  Bell, 
+  ChevronRight, 
+  Zap, 
+  Shirt, 
+  Scissors, 
+  Grid, 
+  Image as ImageIcon,
   User,
-  Footprints,
-  Loader2
+  Plus
 } from 'lucide-react';
 import { Camera as CapCamera, CameraResultType } from '@capacitor/camera';
 import { Preferences } from '@capacitor/preferences';
 import { BACKEND_URL } from '../Constants';
 import { useAuth } from '../context/AuthContext';
-import { useLanguage } from '../context/LanguageContext';
 import { ReactCompareSlider, ReactCompareSliderImage } from 'react-compare-slider';
 
 const TryOn = () => {
-  const { credits } = useAuth();
-  const { t } = useLanguage();
+  const { credits, useCredit } = useAuth();
   
   const [userImage, setUserImage] = useState(null);
   const [userFile, setUserFile] = useState(null);
@@ -45,20 +40,13 @@ const TryOn = () => {
   const categories = [
     { id: 'tops', label: 'Tops', icon: Shirt },
     { id: 'bottoms', label: 'Bottoms', icon: Scissors },
-    { id: 'dresses', label: 'Dresses', icon: User },
-    { id: 'hair', label: 'Hair', icon: Sparkles },
-    { id: 'glasses', label: 'Glasses', icon: Glasses },
-    { id: 'watches', label: 'Watches', icon: Watch },
-    { id: 'shoes', label: 'Shoes', icon: Footprints },
-    { id: 'others', label: 'Others', icon: Grid },
+    { id: 'dresses', label: 'Dresses', icon: Sparkles },
+    { id: 'more', label: 'More', icon: Grid },
   ];
 
   useEffect(() => {
     loadHistory();
-    checkPendingJob();
-    return () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    };
+    return () => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); };
   }, []);
 
   const loadHistory = async () => {
@@ -70,18 +58,9 @@ const TryOn = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        setHistory(data.map(j => `${BACKEND_URL}${j.result_url}`));
+        setHistory(data.slice(0, 10));
       }
     } catch (e) {}
-  };
-
-  const checkPendingJob = async () => {
-    const savedJobId = await Preferences.get({ key: 'pending_job_id' }).then(res => res.value);
-    if (savedJobId) {
-      setIsLoading(true);
-      const token = await Preferences.get({ key: 'jwt_token' }).then(res => res.value) || localStorage.getItem('jwt_token');
-      pollJobStatus(savedJobId, token);
-    }
   };
 
   const handleCamera = async (type) => {
@@ -91,20 +70,12 @@ const TryOn = () => {
         allowEditing: true,
         resultType: CameraResultType.Uri
       });
-      
       const response = await fetch(image.webPath);
       const blob = await response.blob();
       const file = new File([blob], "camera_photo.jpg", { type: "image/jpeg" });
-
-      if (type === 'user') {
-        setUserImage(image.webPath);
-        setUserFile(file);
-      } else {
-        setClothImage(image.webPath);
-        setClothFile(file);
-      }
+      if (type === 'user') { setUserImage(image.webPath); setUserFile(file); }
+      else { setClothImage(image.webPath); setClothFile(file); }
     } catch (e) {
-      // User cancelled or camera error - fallback to hidden file input
       if (type === 'user') userFileInput.current.click();
       else clothFileInput.current.click();
     }
@@ -115,13 +86,8 @@ const TryOn = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        if (type === 'user') {
-          setUserImage(reader.result);
-          setUserFile(file);
-        } else {
-          setClothImage(reader.result);
-          setClothFile(file);
-        }
+        if (type === 'user') { setUserImage(reader.result); setUserFile(file); }
+        else { setClothImage(reader.result); setClothFile(file); }
       };
       reader.readAsDataURL(file);
     }
@@ -138,9 +104,8 @@ const TryOn = () => {
           const data = await res.json();
           if (data.status === 'completed') {
             clearInterval(pollIntervalRef.current);
-            await Preferences.remove({ key: 'pending_job_id' });
             setResultImage(`${BACKEND_URL}${data.result_url}`);
-            setHistory(prev => [`${BACKEND_URL}${data.result_url}`, ...prev]);
+            loadHistory();
             setIsLoading(false);
           } else if (data.status === 'failed') {
             clearInterval(pollIntervalRef.current);
@@ -156,9 +121,11 @@ const TryOn = () => {
 
   const handleTryOn = async () => {
     if (!userFile || !clothFile) return;
+    const canProceed = await useCredit();
+    if (!canProceed) return;
+    
     setError(null);
     setIsLoading(true);
-    
     const formData = new FormData();
     formData.append("user_image", userFile);
     formData.append("cloth_image", clothFile);
@@ -173,10 +140,9 @@ const TryOn = () => {
       });
       if (!res.ok) throw new Error("Busy");
       const data = await res.json();
-      await Preferences.set({ key: 'pending_job_id', value: data.job_id });
       pollJobStatus(data.job_id, token);
     } catch (e) {
-      setError("AI Servers are busy. Retrying in 10s...");
+      setError("AI Servers are busy. Retrying...");
       setTimeout(handleTryOn, 10000);
     }
   };
@@ -184,120 +150,192 @@ const TryOn = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-center">
-         <div className="w-24 h-24 border-4 border-primary border-t-transparent rounded-full animate-spin mb-8"></div>
-         <h2 className="text-3xl font-black text-white mb-4">AI MAGIC IN PROGRESS</h2>
-         <p className="text-gray-400 text-lg mb-8">We are tailoring the dress for you. This takes 1-2 minutes.</p>
-         <div className="bg-white/10 px-8 py-4 rounded-3xl border border-white/20">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Queue Status</p>
-            <p className="text-2xl font-black text-primary">{queuePosition > 0 ? `Position #${queuePosition + 1}` : 'Up Next!'}</p>
+         <div className="w-20 h-20 border-4 border-[#C8A96E] border-t-transparent rounded-full animate-spin mb-8"></div>
+         <h2 className="text-2xl font-black text-white mb-2">GENERATING MAGIC</h2>
+         <p className="text-gray-500 text-sm mb-8">Tailoring the outfit... 1-2 mins remaining.</p>
+         <div className="bg-[#141414] px-6 py-4 rounded-2xl border border-[#2A2A2A]">
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Queue Position</p>
+            <p className="text-xl font-black text-[#C8A96E]">{queuePosition > 0 ? `#${queuePosition + 1}` : 'Processing Now'}</p>
          </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pb-32">
-      {/* Header */}
-      <div className="px-6 py-4 flex items-center justify-between border-b border-border sticky top-0 bg-background/80 backdrop-blur-md z-40">
-        <button onClick={() => window.history.back()}><ChevronLeft className="w-6 h-6"/></button>
-        <h1 className="text-lg font-black uppercase">Studio</h1>
-        <div className="bg-primary/10 px-3 py-1 rounded-full flex items-center gap-1">
-          <Zap className="w-4 h-4 text-primary fill-primary" />
-          <span className="text-xs font-black">{credits}</span>
+    <div style={{ minHeight: '100vh', backgroundColor: '#0A0A0A', paddingBottom: 100 }}>
+      
+      {/* ─── Header ─── */}
+      <div style={{ padding: '20px 20px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <h1 style={{ color: '#fff', fontSize: 24, fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>Try-ON</h1>
+          <p style={{ color: '#C8A96E', fontSize: 10, fontWeight: 800, margin: 0, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Daily Studio</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: '#141414', border: '1px solid #2A2A2A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Bell style={{ width: 20, height: 20, color: '#fff' }} />
+          </div>
+          <div className="badge-credit">
+            <Zap style={{ width: 14, height: 14, fill: '#C8A96E', color: '#C8A96E' }} />
+            <span>{credits}</span>
+          </div>
         </div>
       </div>
 
-      <div className="px-6 pt-8">
-        {!resultImage ? (
-          <div className="space-y-8">
-            {/* User Photo */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-black uppercase text-text-muted">1. Your Photo</h3>
-              <div 
-                onClick={() => handleCamera('user')}
-                className="relative aspect-[3/4] bg-card rounded-[32px] border-2 border-dashed border-border flex flex-col items-center justify-center overflow-hidden"
-              >
-                {userImage ? (
-                  <img src={userImage} className="w-full h-full object-cover" />
-                ) : (
-                  <>
-                    <Camera className="w-10 h-10 text-primary mb-2" />
-                    <span className="text-sm font-bold text-text-muted">Click to take photo</span>
-                  </>
-                )}
-              </div>
-              <input ref={userFileInput} type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'user')} />
-            </div>
-
-            {/* Cloth Photo */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-black uppercase text-text-muted">2. What to try?</h3>
-              <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                {categories.map(cat => (
-                  <button 
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
-                    className={`flex flex-col items-center gap-1 p-3 rounded-2xl min-w-[70px] transition-all ${selectedCategory === cat.id ? 'bg-primary text-white' : 'bg-card text-text-muted'}`}
-                  >
-                    <cat.icon className="w-5 h-5" />
-                    <span className="text-[10px] font-bold">{cat.label}</span>
-                  </button>
-                ))}
-              </div>
-              <div 
-                onClick={() => handleCamera('cloth')}
-                className="relative aspect-square bg-card rounded-[32px] border-2 border-dashed border-border flex flex-col items-center justify-center overflow-hidden"
-              >
-                {clothImage ? (
-                  <img src={clothImage} className="w-full h-full object-cover" />
-                ) : (
-                  <>
-                    <Upload className="w-10 h-10 text-primary mb-2" />
-                    <span className="text-sm font-bold text-text-muted">Upload garment photo</span>
-                  </>
-                )}
-              </div>
-              <input ref={clothFileInput} type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'cloth')} />
-            </div>
-
-            {error && <div className="p-4 bg-red-50 text-red-500 rounded-2xl font-bold text-sm border border-red-100">{error}</div>}
-
-            <button 
-              onClick={handleTryOn}
-              disabled={!userFile || !clothFile}
-              className="btn-minimal w-full py-6 text-xl disabled:opacity-30"
-            >
-              GENERATE LOOK ✨
-            </button>
-          </div>
-        ) : (
+      <div style={{ padding: '16px' }}>
+        {resultImage ? (
           <div className="animate-slide-up">
             <div className="flex justify-between items-center mb-6">
-               <button onClick={() => setResultImage(null)} className="font-bold text-primary flex items-center gap-1"><ChevronLeft/> Try New</button>
-               <button className="p-3 bg-card rounded-full"><Download/></button>
+               <button onClick={() => setResultImage(null)} style={{ background: 'none', border: 'none', color: '#C8A96E', fontWeight: 700, cursor: 'pointer' }}>← Create New</button>
+               <h3 style={{ color: '#fff', fontSize: 16, fontWeight: 800 }}>Magic Result</h3>
+               <div style={{ width: 60 }}></div>
             </div>
-            <div className="rounded-[40px] overflow-hidden shadow-2xl border-4 border-white">
+            <div style={{ borderRadius: 32, overflow: 'hidden', border: '1px solid #2A2A2A', backgroundColor: '#141414' }}>
                <ReactCompareSlider
                   itemOne={<ReactCompareSliderImage src={userImage} />}
                   itemTwo={<ReactCompareSliderImage src={resultImage} />}
-                  className="w-full aspect-[3/4]"
+                  style={{ width: '100%', aspectRatio: '3/4' }}
                />
             </div>
           </div>
-        )}
+        ) : (
+          <>
+            {/* ─── Create New Look Card ─── */}
+            <div style={{ backgroundColor: '#141414', border: '1px solid #2A2A2A', borderRadius: 32, padding: '24px' }}>
+              <h3 style={{ color: '#fff', fontSize: 20, fontWeight: 800, margin: '0 0 4px 0' }}>Create New Look</h3>
+              <p style={{ color: '#888', fontSize: 14, margin: '0 0 24px 0' }}>Upload your photo to get started</p>
 
-        {/* History */}
-        {history.length > 0 && (
-          <div className="mt-16">
-            <h3 className="text-lg font-black mb-6 flex items-center gap-2"><History className="text-primary"/> Recent Designs</h3>
-            <div className="grid grid-cols-3 gap-3">
-              {history.map((url, i) => (
-                <div key={i} className="aspect-[3/4] rounded-xl overflow-hidden border border-border shadow-sm" onClick={() => {setResultImage(url); setUserImage(null);}}>
-                   <img src={url} className="w-full h-full object-cover" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                {/* User Photo Upload */}
+                <div 
+                  onClick={() => handleCamera('user')}
+                  className="upload-card" 
+                  style={{ flex: 1, height: 140 }}
+                >
+                  {userImage ? (
+                    <img src={userImage} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 12 }} />
+                  ) : (
+                    <>
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: '#1E1E1E', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
+                        <User style={{ width: 20, height: 20, color: '#888' }} />
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#888' }}>Your Photo</span>
+                    </>
+                  )}
                 </div>
-              ))}
+
+                <div style={{ fontSize: 18, color: '#C8A96E', fontWeight: 800 }}>+</div>
+
+                {/* Garment Upload */}
+                <div 
+                  onClick={() => handleCamera('cloth')}
+                  className="upload-card" 
+                  style={{ flex: 1, height: 140 }}
+                >
+                  {clothImage ? (
+                    <img src={clothImage} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 12 }} />
+                  ) : (
+                    <>
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: '#1E1E1E', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
+                        <Shirt style={{ width: 20, height: 20, color: '#888' }} />
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#888' }}>Garment</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <button 
+                id="tryon-generate-btn"
+                onClick={handleTryOn}
+                disabled={!userFile || !clothFile}
+                style={{
+                  backgroundColor: '#C8A96E',
+                  color: '#0A0A0A',
+                  fontWeight: 800,
+                  fontSize: 16,
+                  padding: '16px',
+                  borderRadius: 14,
+                  border: 'none',
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  opacity: (!userFile || !clothFile) ? 0.4 : 1,
+                  cursor: 'pointer'
+                }}
+              >
+                <Scissors style={{ width: 18, height: 18 }} />
+                Generate Try-On
+              </button>
             </div>
-          </div>
+
+            <input ref={userFileInput} type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'user')} />
+            <input ref={clothFileInput} type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'cloth')} />
+
+            {/* ─── Explore Categories ─── */}
+            <div style={{ marginTop: 32 }}>
+              <h3 style={{ color: '#fff', fontSize: 17, fontWeight: 700, marginBottom: 16 }}>Explore Categories</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                {categories.map(cat => (
+                  <button
+                    key={cat.id}
+                    id={`tryon-cat-${cat.id}`}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    style={{
+                      backgroundColor: selectedCategory === cat.id ? '#1E1A0E' : '#141414',
+                      border: `1px solid ${selectedCategory === cat.id ? '#C8A96E' : '#2A2A2A'}`,
+                      borderRadius: 16,
+                      padding: '12px 8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 8,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#1E1E1E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <cat.icon style={{ width: 18, height: 18, color: selectedCategory === cat.id ? '#C8A96E' : '#666' }} />
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: selectedCategory === cat.id ? '#C8A96E' : '#666' }}>{cat.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ─── Your Gallery Preview ─── */}
+            <div style={{ marginTop: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <h3 style={{ color: '#fff', fontSize: 17, fontWeight: 700, margin: 0 }}>Your Gallery</h3>
+                <button 
+                  onClick={() => navigate('/studio')}
+                  style={{ background: 'none', border: 'none', color: '#C8A96E', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  See all
+                </button>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                {history.length > 0 ? (
+                  history.slice(0, 2).map((job, i) => (
+                    <div key={i} style={{ aspectRatio: '3/4', borderRadius: 16, backgroundColor: '#141414', border: '1px solid #2A2A2A', overflow: 'hidden' }}>
+                      <img src={`${BACKEND_URL}${job.result_url}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    <div style={{ aspectRatio: '3/4', borderRadius: 16, backgroundColor: '#141414', border: '1px solid #2A2A2A' }} />
+                    <div style={{ aspectRatio: '3/4', borderRadius: 16, backgroundColor: '#141414', border: '1px solid #2A2A2A', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                       <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: '#1E1E1E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <ImageIcon style={{ width: 20, height: 20, color: '#444' }} />
+                       </div>
+                       <span style={{ color: '#444', fontSize: 11, fontWeight: 700 }}>View 12 more</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>
