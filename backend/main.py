@@ -18,10 +18,8 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
-from PIL import Image
-import numpy as np
 import math
-import cv2
+# Move heavy imports inside functions to speed up startup
 
 print("DEBUG: Importing local modules...")
 from auth import verify_password, get_password_hash, create_access_token, decode_token
@@ -75,18 +73,27 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Root route — must be fast for healthchecks
+# Root route — MUST BE FIRST AND FAST
 @app.get("/")
 async def root():
     return {"message": "Try-ON API is running", "status": "ok"}
 
 @app.middleware("http")
 async def add_cors_header(request, call_next):
-    response = await call_next(request)
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    return response
+    try:
+        response = await call_next(request)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
+    except Exception as e:
+        print(f"Middleware Error: {e}")
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content={"error": "Internal Server Error"}, status_code=500)
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
@@ -242,6 +249,8 @@ def overlay_transparent(background, overlay, x, y, person_mask=None):
     Applies edge feathering to the overlay for a smoother blend.
     If person_mask is provided, prevents clothing from bleeding into the background.
     """
+    import cv2
+    import numpy as np
     bg_h, bg_w, bg_channels = background.shape
     ol_h, ol_w, ol_channels = overlay.shape
 
@@ -425,6 +434,10 @@ def add_watermark(image_path):
 async def process_jobs():
     import time
     import replicate
+    import cv2
+    import numpy as np
+    from PIL import Image
+    from rembg import remove
     from gradio_client import Client, handle_file
     from database import AsyncSessionLocal, Job
     
