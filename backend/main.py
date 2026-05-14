@@ -131,16 +131,13 @@ async def download_apk():
 async def startup_event():
     print("🚀 [STARTUP] Initializing Application...")
     try:
-        # Don't let DB init block the whole app startup
+        # Give the network interface a moment to breathe on Railway
+        await asyncio.sleep(2)
+        # Non-blocking DB init
         asyncio.create_task(init_db())
-        print("✅ [STARTUP] DB initialization task started.")
-    except Exception as e:
-        print(f"❌ [STARTUP] DB init error: {e}")
         
-    try:
+        # Non-blocking background task for processing
         asyncio.create_task(process_jobs())
-        print("✅ [STARTUP] Background worker task started.")
-    except Exception as e:
         print(f"❌ [STARTUP] Worker task error: {e}")
     
     print("✨ [STARTUP] Application is ready to receive requests!")

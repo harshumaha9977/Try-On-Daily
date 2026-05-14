@@ -73,19 +73,29 @@ class Job(Base):
 # =============================================
 
 async def init_db():
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-            # Add last_checkin_date column if missing (safe migration)
-            from sqlalchemy import text
-            try:
-                await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_checkin_date VARCHAR(20) DEFAULT NULL"))
-            except Exception:
-                pass
-        print("✅ Database connected and tables ready.")
-    except Exception as e:
-        print(f"❌ Database initialization error: {e}")
-        raise
+    max_retries = 5
+    retry_delay = 5
+    for attempt in range(max_retries):
+        try:
+            print(f"📡 [DB] Attempting connection (Attempt {attempt+1}/{max_retries})...")
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+                # Add last_checkin_date column if missing (safe migration)
+                from sqlalchemy import text
+                try:
+                    await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_checkin_date VARCHAR(20) DEFAULT NULL"))
+                except Exception:
+                    pass
+            print("✅ [DB] Database connected and tables ready.")
+            return # Success!
+        except Exception as e:
+            print(f"⚠️ [DB] Connection attempt {attempt+1} failed: {e}")
+            if attempt < max_retries - 1:
+                print(f"⏳ [DB] Retrying in {retry_delay}s...")
+                await asyncio.sleep(retry_delay)
+            else:
+                print("❌ [DB] All retries failed. Application might struggle.")
+                # We don't raise here to keep the healthcheck alive
 
 
 async def get_db():
