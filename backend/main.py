@@ -61,6 +61,11 @@ import dotenv
 dotenv.load_dotenv(override=True)
 print("DEBUG: REPLICATE_API_TOKEN is", os.getenv("REPLICATE_API_TOKEN"))
 
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
+
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
